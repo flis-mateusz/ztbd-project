@@ -1,10 +1,10 @@
-from helpers.csv_loader import load_csv
-from mysql_import import import_mysql_data
-from postgres_import import import_postgres_data
-from mongo_import import import_mongo_data
+from database_scripts.helpers.csv_loader import load_csv
+from database_scripts.mysql_import import import_mysql_data
+from database_scripts.postgres_import import import_postgres_data
+from database_scripts.mongo_import import import_mongo_data
 
 def prepare_shared_data():
-    print("📦 Wczytywanie wszystkich danych z CSV...")
+    print("📦 Wczytywanie danych z CSV...")
 
     return {
         "users": load_csv("users"),
@@ -24,7 +24,7 @@ def prepare_shared_data():
 if __name__ == "__main__":
     data = prepare_shared_data()
 
-    # import_mysql_data(data)
-    # import_postgres_data(data)
+    import_mysql_data(data)
+    import_postgres_data(data)
     import_mongo_data(data, port=27017)
     import_mongo_data(data, port=27018)

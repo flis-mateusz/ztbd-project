@@ -1,0 +1,4 @@
+test,mysql,postgres,mongo_latest,mongo_old
+BasicReadTest,0.0259,0.029,0.1193,0.1268
+AverageRatingByCuisineTest,0.007,0.0027,0.0294,0.0174
+TopHealthyPopularRecipesTest,0.0036,0.0025,0.0067,0.0282
