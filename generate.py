@@ -130,7 +130,7 @@ with tqdm(total=TOTAL_RECORDS, dynamic_ncols=True) as pbar:
                 pbar.update(1)
 
             # Dodaj ratingi
-            num_ratings = random.randint(1, 2)
+            num_ratings = random.randint(0, 3)
             for _ in range(num_ratings):
                 rater_id = random.randint(1, user_id)  # istniejący user
                 data_ratings.append({
