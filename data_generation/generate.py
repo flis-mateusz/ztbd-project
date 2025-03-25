@@ -70,7 +70,6 @@ with tqdm(total=TOTAL_RECORDS, dynamic_ncols=True) as pbar:
                 "id_diet": random.randint(1, len(DIETS)),
                 "id_difficulty": random.randint(1, len(DIFFICULTY_LEVELS)),
                 "id_meal_type": random.randint(1, len(MEAL_TYPES)),
-                "user_id": user_id
             }
             data_recipes.append(recipe)
             total_records += 1
@@ -93,7 +92,7 @@ with tqdm(total=TOTAL_RECORDS, dynamic_ncols=True) as pbar:
             for step in range(1, random.randint(3, 10)+1):
                 data_instructions.append({
                     "id": instruction_id,
-                    "recipe_id": recipe_id,
+                    "id_recipe": recipe_id,
                     "step_number": step,
                     "description": fake.sentence(nb_words=10)
                 })
@@ -104,7 +103,7 @@ with tqdm(total=TOTAL_RECORDS, dynamic_ncols=True) as pbar:
             # Dodaj nutrition
             data_nutrition.append({
                 "id": nutrition_id,
-                "recipe_id": recipe_id,
+                "id_recipe": recipe_id,
                 "calories": random.randint(100, 900),
                 "carbohydrates": round(random.uniform(10, 100), 1),
                 "protein": round(random.uniform(5, 50), 1),
@@ -122,8 +121,8 @@ with tqdm(total=TOTAL_RECORDS, dynamic_ncols=True) as pbar:
             if random.random() < 0.7:
                 data_users_recipes.append({
                     "id": users_recipes_id,
-                    "recipe_id": recipe_id,
-                    "user_id": user_id,
+                    "id_recipe": recipe_id,
+                    "id_user": user_id,
                     "saved_at": fake.date_time_this_year()
                 })
                 users_recipes_id += 1
@@ -131,14 +130,14 @@ with tqdm(total=TOTAL_RECORDS, dynamic_ncols=True) as pbar:
                 pbar.update(1)
 
             # Dodaj ratingi
-            num_ratings = random.randint(1, 5)
+            num_ratings = random.randint(1, 2)
             for _ in range(num_ratings):
                 rater_id = random.randint(1, user_id)  # istniejący user
                 data_ratings.append({
                     "id": rating_id,
                     "id_recipe": recipe_id,
                     "id_user": rater_id,
-                    "value": random.randint(1, 5)
+                    "value": round(random.uniform(1, 5), 1),
                 })
                 rating_id += 1
                 total_records += 1

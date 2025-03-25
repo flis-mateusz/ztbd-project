@@ -1,6 +1,4 @@
 import mysql.connector
-from helpers.csv_loader import load_csv
-from tqdm import tqdm
 
 def create_mysql_tables(cursor):
     print("🔧 Tworzenie tabel...")
@@ -48,10 +46,42 @@ def create_mysql_tables(cursor):
         """
         CREATE TABLE IF NOT EXISTS instructions (
             id INT PRIMARY KEY,
-            recipe_id INT,
+            id_recipe INT,
             step_number INT,
             description TEXT,
-            FOREIGN KEY (recipe_id) REFERENCES recipes(id)
+            FOREIGN KEY (id_recipe) REFERENCES recipes(id)
+        );""",
+        """
+        CREATE TABLE IF NOT EXISTS nutrition (
+            id INT PRIMARY KEY,
+            id_recipe INT,
+            calories INT,
+            carbohydrates FLOAT,
+            protein FLOAT,
+            fat FLOAT,
+            fiber FLOAT,
+            salt FLOAT,
+            saturated_fat FLOAT,
+            sugars FLOAT,
+            FOREIGN KEY (id_recipe) REFERENCES recipes(id)
+        );""",
+        """
+        CREATE TABLE IF NOT EXISTS users_recipes (
+            id INT PRIMARY KEY,
+            id_recipe INT,
+            id_user INT,
+            saved_at DATETIME,
+            FOREIGN KEY (id_recipe) REFERENCES recipes(id),
+            FOREIGN KEY (id_user) REFERENCES users(id)
+        );""",
+        """
+        CREATE TABLE IF NOT EXISTS rating (
+            id INT PRIMARY KEY,
+            id_recipe INT,
+            id_user INT,
+            value FLOAT,
+            FOREIGN KEY (id_recipe) REFERENCES recipes(id),
+            FOREIGN KEY (id_user) REFERENCES users(id)
         );"""
     ]
 
@@ -59,11 +89,12 @@ def create_mysql_tables(cursor):
         cursor.execute(query)
 
 def truncate_mysql_tables(cursor):
-    print("🧹 Czyszczenie tabel...")
+    print("🧨 Usuwanie istniejących tabel...")
     cursor.execute("SET FOREIGN_KEY_CHECKS=0;")
-    tables = ["instructions", "recipes_ingredients", "recipes", "users", "cuisine", "meal_type", "diet", "difficulty", "ingredients"]
+    tables = ["instructions", "recipes_ingredients", "nutrition", "users_recipes", "rating",
+              "recipes", "users", "cuisine", "meal_type", "diet", "difficulty", "ingredients"]
     for table in tables:
-        cursor.execute(f"TRUNCATE TABLE {table};")
+        cursor.execute(f"DROP TABLE IF EXISTS {table};")
     cursor.execute("SET FOREIGN_KEY_CHECKS=1;")
 
 def import_mysql_data(data: dict):
@@ -71,8 +102,8 @@ def import_mysql_data(data: dict):
     conn = mysql.connector.connect(host="localhost", port=3306, user="root", password="example", database="testdb")
     cursor = conn.cursor()
 
-    create_mysql_tables(cursor)
     truncate_mysql_tables(cursor)
+    create_mysql_tables(cursor)
 
     def insert(table, columns, df):
         print(f"📄 INSERT -> {table} ({len(df):,} rekordów)")
@@ -100,19 +131,11 @@ def import_mysql_data(data: dict):
     total_inserted += insert("recipes", ["id", "title", "description", "cook_time", "serving_size", "views", "rating",
                                            "id_cuisine", "id_diet", "id_difficulty", "id_meal_type"], data["recipes"])
 
-    print(f"📄 INSERT -> recipes_ingredients ({len(data['recipes_ingredients']):,} rekordów)")
-    cursor.executemany(
-        "INSERT INTO recipes_ingredients (id, id_recipe, id_ingredient, quantity, measurement) VALUES (%s, %s, %s, %s, %s);",
-        list(data["recipes_ingredients"].itertuples(index=False, name=None))
-    )
-    total_inserted += len(data["recipes_ingredients"])
-
-    print(f"📄 INSERT -> instructions ({len(data['instructions']):,} rekordów)")
-    cursor.executemany(
-        "INSERT INTO instructions (id, recipe_id, step_number, description) VALUES (%s, %s, %s, %s);",
-        list(data["instructions"].itertuples(index=False, name=None))
-    )
-    total_inserted += len(data["instructions"])
+    total_inserted += insert("recipes_ingredients", ["id", "id_recipe", "id_ingredient", "quantity", "measurement"], data["recipes_ingredients"])
+    total_inserted += insert("instructions", ["id", "id_recipe", "step_number", "description"], data["instructions"])
+    total_inserted += insert("nutrition", ["id", "id_recipe", "calories", "carbohydrates", "protein", "fat", "fiber", "salt", "saturated_fat", "sugars"], data["nutrition"])
+    total_inserted += insert("users_recipes", ["id", "id_recipe", "id_user", "saved_at"], data["users_recipes"])
+    total_inserted += insert("rating", ["id", "id_recipe", "id_user", "value"], data["rating"])
 
     conn.commit()
     cursor.close()
@@ -120,4 +143,4 @@ def import_mysql_data(data: dict):
     print(f"\n✅ MySQL. Zaimportowano dokładnie {total_inserted:,} rekordów.")
 
 if __name__ == "__main__":
-    print("Ten moduł powinien być uruchamiany z poziomu import_unstable.py, który przekazuje dane.")
+    print("Ten moduł powinien być uruchamiany z poziomu import.py, który przekazuje dane.")
