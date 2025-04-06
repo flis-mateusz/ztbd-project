@@ -8,9 +8,10 @@ from pymongo import MongoClient
 
 
 class BasePerformanceTest(ABC):
-    def __init__(self, save_output=True):
+    def __init__(self, save_output=True, description=None):
         self.save_output = save_output
         self.results = {}
+        self.description = description
 
         self.__mysql = mysql.connector.connect(
             host="localhost", port=3306, user="root", password="example", database="testdb"
