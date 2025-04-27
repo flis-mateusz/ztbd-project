@@ -3,7 +3,7 @@ from benchmarks.core.base_test import BasePerformanceTest
 
 class HighlyRatedUnlikedRecipesTest(BasePerformanceTest):
     def __init__(self):
-        super().__init__()
+        super().__init__(description="Najlepiej oceniane przepisy, które nie zostały zapisane przez żadnego użytkownika")
 
     # 📘 Test: Najlepiej oceniane przepisy, które nie zostały zapisane przez żadnego użytkownika
     # Warunki:

@@ -55,3 +55,17 @@ def get_record_counts():
         counts["Mongo (old)"] = f"❌ {e}"
 
     return counts
+
+def human_readable(n: int):
+    if n >= 1_000_000:
+        return f"{round(n/1_000_000,1)} mln"
+    if n >= 1_000:
+        return f"{round(n/1_000,1)} tys."
+    return str(n)
+
+def round_records(n: int):
+    if n >= 1_000_000:
+        return round(n, -6)
+    if n >= 1_000:
+        return round(n, -3)
+    return round(n)

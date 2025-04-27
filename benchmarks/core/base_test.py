@@ -8,10 +8,11 @@ from pymongo import MongoClient
 
 
 class BasePerformanceTest(ABC):
-    def __init__(self, save_output=True, description=None):
+    def __init__(self, save_output=True, description=None, operation='READ'):
         self.save_output = save_output
         self.results = {}
         self.description = description
+        self.operation = operation
 
         self.__mysql = mysql.connector.connect(
             host="localhost", port=3306, user="root", password="example", database="testdb"
@@ -101,6 +102,7 @@ class BasePerformanceTest(ABC):
 from bson import ObjectId
 from psycopg2.extras import DictRow
 
+
 def _to_json_compatible(obj):
     if isinstance(obj, DictRow):
         return dict(obj)
@@ -112,4 +114,3 @@ def _to_json_compatible(obj):
         return str(obj)
     else:
         return obj
-

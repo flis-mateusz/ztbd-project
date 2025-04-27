@@ -3,7 +3,7 @@ from benchmarks.core.base_test import BasePerformanceTest
 
 class TopHealthyPopularRecipesTest(BasePerformanceTest):
     def __init__(self):
-        super().__init__()
+        super().__init__(description="Znajdź najzdrowsze i najpopularniejsze przepisy (Top 50)")
 
     # 📘 Test: znajdź najzdrowsze i najpopularniejsze przepisy (Top 50)
     # Warunki:

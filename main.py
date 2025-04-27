@@ -13,7 +13,7 @@ from benchmarks.tests import (
     test_03_top_healthy_popular_recipes,
     test_04_highly_rated_unliked_recipes,
 )
-from database_scripts.record_counter import get_record_counts
+from database_scripts.record_counter import get_record_counts, human_readable
 from generate_and_import import generate_and_import
 
 
@@ -21,7 +21,7 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Benchmark GUI")
-        self.geometry("600x420")
+        self.geometry("600x320")
         self.resizable(False, False)
 
         # wczytaj klasy testów i pogrupuj je po operacjach CRUD
@@ -210,7 +210,8 @@ class App(tk.Tk):
         if not class_name:
             return
         cls = self._find_test_class_by_name(class_name)
-        description = getattr(cls(), "description", "Brak opisu")
+        description = getattr(cls(), "description") or "Brak opisu"
+        print(description)
         self.test_description.configure(state="normal")
         self.test_description.delete("1.0", tk.END)
         self.test_description.insert(tk.END, description)
@@ -283,18 +284,10 @@ class App(tk.Tk):
         def task():
             counts = get_record_counts()
             mysql_total = counts.get("MySQL", "błąd")
-            pretty = self._human(mysql_total) if isinstance(mysql_total, int) else mysql_total
+            pretty = human_readable(mysql_total) if isinstance(mysql_total, int) else mysql_total
             self.after(0, lambda: self.mysql_label.config(text=f"📊 MySQL: {pretty}"))
 
         threading.Thread(target=task, daemon=True).start()
-
-    @staticmethod
-    def _human(n: int):
-        if n >= 1_000_000:
-            return f"{round(n/1_000_000,1)} mln"
-        if n >= 1_000:
-            return f"{round(n/1_000,1)} tys."
-        return str(n)
 
     # ---------- ładowanie klas  ------------------------------------------
 
@@ -310,7 +303,7 @@ class App(tk.Tk):
         for module in modules:
             for _name, obj in inspect.getmembers(module, inspect.isclass):
                 if issubclass(obj, BasePerformanceTest) and obj is not BasePerformanceTest:
-                    op = getattr(obj, "operation", "READ").upper()
+                    op = getattr(obj(), "operation", "READ").upper()
                     if op not in by_op:
                         op = "READ"
                     by_op[op].append(obj)
