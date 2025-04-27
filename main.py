@@ -7,51 +7,79 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
 from benchmarks.core.base_test import BasePerformanceTest
-from benchmarks.tests import test_01_basic_read, test_02_rating_by_cuisine, test_03_top_healthy_popular_recipes, \
-    test_04_highly_rated_unliked_recipes
+from benchmarks.tests import (
+    test_01_basic_read,
+    test_02_rating_by_cuisine,
+    test_03_top_healthy_popular_recipes,
+    test_04_highly_rated_unliked_recipes,
+)
 from database_scripts.record_counter import get_record_counts
+from generate_and_import import generate_and_import
 
 
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Benchmark GUI")
-        self.geometry("510x400")
+        self.geometry("600x420")
         self.resizable(False, False)
-        self.test_classes = self._load_test_classes()
+
+        # wczytaj klasy testów i pogrupuj je po operacjach CRUD
+        self.tests_by_op = self._load_test_classes()
+
         self._create_tabs()
+
+    # ---------- zakładki --------------------------------------------------
 
     def _create_tabs(self):
         tab_control = ttk.Notebook(self)
-        tab_control.pack(expand=1, fill='both')
+        tab_control.pack(expand=1, fill="both")
 
         self.tab_tests = ttk.Frame(tab_control)
         self.tab_generate = ttk.Frame(tab_control)
-        self.tab_status = ttk.Frame(tab_control)
-
         tab_control.add(self.tab_tests, text="🧪 Testy")
         tab_control.add(self.tab_generate, text="⚙️ Generowanie danych")
 
         self._init_tab_tests()
         self._init_tab_generate()
 
+    # ---------- zakładka TESTY -------------------------------------------
+
     def _init_tab_tests(self):
-        self.test_tab_frame = ttk.Frame(self.tab_tests)
-        self.test_tab_frame.pack(pady=10, padx=10, fill='both', expand=True)
+        frame = ttk.Frame(self.tab_tests)
+        frame.pack(pady=10, padx=10, fill="both", expand=True)
 
-        ttk.Label(self.test_tab_frame, text="Wybierz test:", font=("Arial", 12)).grid(row=0, column=0, columnspan=2,
-                                                                                      sticky="w")
+        # ---------- wybór operacji CRUD ----------
+        ttk.Label(frame, text="Operacja CRUD:", font=("Arial", 12)).grid(
+            row=0, column=0, sticky="w"
+        )
+        self.op_selector = ttk.Combobox(frame, state="readonly", width=10)
+        self.op_selector["values"] = ["CREATE", "READ", "UPDATE", "DELETE"]
+        self.op_selector.current(1)  # READ domyślnie
+        self.op_selector.grid(row=0, column=1, sticky="w", padx=(5, 20))
+        self.op_selector.bind("<<ComboboxSelected>>", self._on_operation_selected)
 
-        self.test_selector = ttk.Combobox(self.test_tab_frame, state="readonly")
-        self.test_selector["values"] = list(self.test_classes.keys())
-        self.test_selector.grid(row=0, column=2, columnspan=2, sticky="we")
+        # ---------- wybór testu ----------
+        ttk.Label(frame, text="Test:", font=("Arial", 12)).grid(
+            row=0, column=2, sticky="w"
+        )
+        self.test_selector = ttk.Combobox(frame, state="readonly", width=35)
+        self.test_selector.grid(row=0, column=3, sticky="w")
         self.test_selector.bind("<<ComboboxSelected>>", self._on_test_selected)
 
-        self.test_description = tk.Text(self.test_tab_frame, height=4, wrap="word", width=60, state='disabled')
+        # ---------- opis testu ----------
+        self.test_description = tk.Text(
+            frame, height=4, wrap="word", width=70, state="disabled"
+        )
         self.test_description.grid(row=1, column=0, columnspan=4, pady=(10, 10))
 
-        ttk.Label(self.test_tab_frame, text="Wybierz silniki baz danych:").grid(row=2, column=0, columnspan=4,
-                                                                                sticky="w", pady=(10, 0))
+        # wypełnij testy dla domyślnej operacji
+        self._populate_tests_for_operation("READ")
+
+        # ---------- silniki baz ----------
+        ttk.Label(frame, text="Silniki baz danych:").grid(
+            row=2, column=0, columnspan=4, sticky="w", pady=(10, 0)
+        )
 
         self.selected_engines = {
             "mysql": tk.BooleanVar(value=True),
@@ -59,78 +87,136 @@ class App(tk.Tk):
             "mongo_latest": tk.BooleanVar(value=True),
             "mongo_old": tk.BooleanVar(value=True),
         }
-
         for idx, (key, var) in enumerate(self.selected_engines.items()):
-            ttk.Checkbutton(self.test_tab_frame, text=key, variable=var).grid(row=3, column=0 + idx, sticky="w")
+            ttk.Checkbutton(frame, text=key, variable=var).grid(
+                row=3, column=idx, sticky="w"
+            )
 
-        self.run_button = ttk.Button(self.test_tab_frame, text="▶ Uruchom test", command=self._run_selected_test)
-        self.run_button.grid(row=4, column=0, columnspan=1, pady=20, sticky="w")
+        # ---------- przycisk RUN + status ----------
+        self.run_button = ttk.Button(
+            frame, text="▶ Uruchom test", command=self._run_selected_test
+        )
+        self.run_button.grid(row=4, column=0, pady=20, sticky="w")
 
-        self.test_status_label = ttk.Label(self.test_tab_frame, text="", font=("Arial", 10, "italic"))
+        self.test_status_label = ttk.Label(frame, text="", font=("Arial", 10, "italic"))
         self.test_status_label.grid(row=4, column=1, columnspan=3, sticky="w")
 
-        self.status_label = ttk.Label(self.test_tab_frame, text="📊 Liczba rekordów...", font=("Arial", 10))
-        self.status_label.grid(row=5, column=0, columnspan=4, sticky="w")
+        # ---------- liczba rekordów ----------
+        self.mysql_label = ttk.Label(
+            frame, text="📊 MySQL: ... rekordów", font=("Arial", 10)
+        )
+        self.mysql_label.grid(row=5, column=0, columnspan=4, sticky="w")
 
-        self._load_db_record_counts()  # Początkowy odczyt
+        # inicjalne odczytanie liczby rekordów
+        self._update_mysql_count()
 
-        self.tab_tests.bind("<Visibility>", lambda e: self._load_db_record_counts())
+        # odświeżaj liczbę rekordów, gdy wracamy na zakładkę
+        self.tab_tests.bind("<Visibility>", lambda e: self._update_mysql_count())
 
+    # ─────────────────────────────────────────────────────────────────────────────
+    #   ZAKŁADKA 2 – Generowanie danych
+    # ─────────────────────────────────────────────────────────────────────────────
     def _init_tab_generate(self):
         frame = ttk.Frame(self.tab_generate)
-        frame.pack(pady=10, padx=10, fill='both', expand=True)
+        frame.pack(pady=10, padx=10, fill="both", expand=True)
 
-        ttk.Label(frame, text="Wybierz liczbę rekordów:", font=("Arial", 12)).grid(row=0, column=0, sticky="w")
+        # ── wybór wielkości
+        ttk.Label(frame, text="Liczba rekordów:", font=("Arial", 12)).grid(row=0, column=0, sticky="w")
+        self.size_options = {"1k": 1_000, "10k": 10_000, "100k": 100_000, "1M": 1_000_000, "10M": 10_000_000}
+        self.size_selector = ttk.Combobox(frame, state="readonly", values=list(self.size_options.keys()), width=10)
+        self.size_selector.current(2)  # 100k
+        self.size_selector.grid(row=0, column=1, sticky="w", padx=(5, 20))
 
-        self.size_options = {
-            "1k": 1_000,
-            "10k": 10_000,
-            "100k": 100_000,
-            "1M": 1_000_000,
-            "10M": 10_000_000
-        }
+        # ── przycisk
+        self.generate_btn = ttk.Button(frame, text="⚙️  Generuj dane", command=self._start_generation)
+        self.generate_btn.grid(row=1, column=0, sticky="w", pady=10)
 
-        self.size_selector = ttk.Combobox(frame, state="readonly")
-        self.size_selector["values"] = list(self.size_options.keys())
-        self.size_selector.current(2)  # domyślnie 100k
-        self.size_selector.grid(row=0, column=1, sticky="w")
-
-        self.generate_button = ttk.Button(frame, text="⚙️ Generuj dane", command=self._start_data_generation)
-        self.generate_button.grid(row=1, column=0, columnspan=2, pady=10, sticky="w")
-
-        self.gen_status_label = ttk.Label(frame, text="🟢 Gotowy", font=("Arial", 10, "italic"))
-        self.gen_status_label.grid(row=1, column=2, sticky="w", padx=10)
+        # ── status + progress
+        self.gen_status = ttk.Label(frame, text="🟢 Gotowy", font=("Arial", 10, "italic"))
+        self.gen_status.grid(row=1, column=1, sticky="w", padx=10)
 
         self.progress = ttk.Progressbar(frame, orient="horizontal", mode="indeterminate", length=400)
         self.progress.grid(row=2, column=0, columnspan=3, pady=10)
 
-        self.summary_text = tk.Text(frame, height=10, width=70)
-        self.summary_text.grid(row=3, column=0, columnspan=4, pady=10)
+        # ── pole podsumowania
+        self.summary_box = tk.Text(frame, height=10, width=70, state="disabled")
+        self.summary_box.grid(row=3, column=0, columnspan=3, pady=5)
 
+    # ─────────────────────────────────────────────────────────────────────────────
+    def _start_generation(self):
+        label = self.size_selector.get()
+        if not label:
+            messagebox.showwarning("Błąd", "Wybierz liczbę rekordów.")
+            return
 
-    def _load_test_classes(self):
-        modules = [
-            test_01_basic_read,
-            test_02_rating_by_cuisine,
-            test_03_top_healthy_popular_recipes,
-            test_04_highly_rated_unliked_recipes
-        ]
+        total = self.size_options[label]
+        self.gen_status.config(text="⏳ Generowanie…")
+        self.generate_btn.config(state="disabled")
+        self.progress.start(10)
 
-        tests = {}
-        for module in modules:
-            for name, obj in inspect.getmembers(module):
-                if inspect.isclass(obj) and issubclass(obj, BasePerformanceTest) and obj is not BasePerformanceTest:
-                    tests[name] = obj
-        return tests
+        def task():
+            try:
+                summary = generate_and_import(total)
 
-    def _on_test_selected(self, event):
+                def on_done():
+                    self.progress.stop()
+                    self.gen_status.config(text="✅ Zakończono")
+                    self.generate_btn.config(state="normal")
+                    self._update_mysql_count()  # odśwież licznik w zakładce testów
+
+                    self.summary_box.configure(state="normal")
+                    self.summary_box.delete("1.0", tk.END)
+                    for k, v in summary.items():
+                        self.summary_box.insert(tk.END, f"{k}: {v:,}\n")
+                    self.summary_box.configure(state="disabled")
+
+                self.after(0, on_done)
+            except Exception as e:
+                self.after(0, lambda: self._generation_error(e))
+
+        threading.Thread(target=task, daemon=True).start()
+
+    def _generation_error(self, err):
+        self.progress.stop()
+        self.gen_status.config(text=f"❌ Błąd: {err}")
+        self.generate_btn.config(state="normal")
+
+    # ----------  helpery GUI  --------------------------------------------
+
+    def _populate_tests_for_operation(self, operation):
+        """Ustaw listę w comboboxie na testy z danej kategorii."""
+        tests = self.tests_by_op.get(operation.upper(), [])
+        self.test_selector["values"] = [cls.__name__ for cls in tests]
+        if tests:
+            self.test_selector.current(0)
+            self._on_test_selected(None)
+        else:
+            self.test_selector.set("")
+            self.test_description.configure(state="normal")
+            self.test_description.delete("1.0", tk.END)
+            self.test_description.insert(
+                tk.END, "Brak testów dla wybranej operacji."
+            )
+            self.test_description.configure(state="disabled")
+
+    # ---------- zdarzenia  ------------------------------------------------
+
+    def _on_operation_selected(self, _event):
+        op = self.op_selector.get()
+        self._populate_tests_for_operation(op)
+
+    def _on_test_selected(self, _event):
         class_name = self.test_selector.get()
-        cls = self.test_classes[class_name]
-        description = cls().description or 'Brak opisu'
-        self.test_description.configure(state='normal')
+        if not class_name:
+            return
+        cls = self._find_test_class_by_name(class_name)
+        description = getattr(cls(), "description", "Brak opisu")
+        self.test_description.configure(state="normal")
         self.test_description.delete("1.0", tk.END)
         self.test_description.insert(tk.END, description)
-        self.test_description.configure(state='disabled')
+        self.test_description.configure(state="disabled")
+
+    # ---------- logika TESTÓW  ------------------------------------------
 
     def _run_selected_test(self):
         class_name = self.test_selector.get()
@@ -138,9 +224,13 @@ class App(tk.Tk):
             messagebox.showwarning("Błąd", "Wybierz test.")
             return
 
-        cls = self.test_classes[class_name]()
-        selected = [k for k, v in self.selected_engines.items() if v.get()]
-        if not selected:
+        cls = self._find_test_class_by_name(class_name)
+        if cls is None:
+            messagebox.showerror("Błąd", "Nie znaleziono klasy testu.")
+            return
+
+        selected_engines = [k for k, v in self.selected_engines.items() if v.get()]
+        if not selected_engines:
             messagebox.showwarning("Błąd", "Wybierz przynajmniej jeden silnik.")
             return
 
@@ -148,27 +238,38 @@ class App(tk.Tk):
 
         def task():
             try:
-                results = cls.run()
-                filtered_results = {k: v for k, v in results.items() if k in selected}
-                self.after(0, lambda: self._show_results_chart(class_name, filtered_results))
-                self.after(0, lambda: self.test_status_label.config(text="✅ Test zakończony."))
+                runner = cls()
+                results = runner.run()
+                filtered = {k: v for k, v in results.items() if k in selected_engines}
+                self.after(
+                    0, lambda: self._show_results_chart(class_name, filtered)
+                )
+                self.after(
+                    0, lambda: self.test_status_label.config(text="✅ Test zakończony")
+                )
+                self._update_mysql_count()
             except Exception as e:
-                self.after(0, lambda: self.test_status_label.config(text=f"❌ Błąd: {e}"))
+                self.after(
+                    0,
+                    lambda: self.test_status_label.config(text=f"❌ Błąd: {e}"),
+                )
 
         threading.Thread(target=task, daemon=True).start()
+
+    # ---------- wykres ----------------------------------------------------
 
     def _show_results_chart(self, title, results):
         top = tk.Toplevel(self)
         top.title(f"Wyniki testu: {title}")
-        top.geometry("600x400")
+        top.geometry("640x420")
 
         engines = list(results.keys())
-        values = [results[k] if isinstance(results[k], (int, float)) else 0 for k in engines]
+        values = [results[e] if isinstance(results[e], (int, float)) else 0 for e in engines]
 
         fig = Figure(figsize=(6, 4), dpi=100)
         ax = fig.add_subplot(111)
         ax.bar(engines, values)
-        ax.set_title(f"Wyniki testu: {title}")
+        ax.set_title(title)
         ax.set_ylabel("Czas [s]")
         ax.set_xlabel("Baza danych")
 
@@ -176,67 +277,53 @@ class App(tk.Tk):
         canvas.draw()
         canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-    def _load_db_record_counts(self):
+    # ---------- liczba rekordów ------------------------------------------
+
+    def _update_mysql_count(self):
         def task():
             counts = get_record_counts()
-            text = "📊 Rekordy w bazach danych:\n"
-            for db, count in counts.items():
-                text += f" - {db}: {count}\n"
-
-            def update_label():
-                self.status_label.config(text=f'Liczba rekordów: {self._human_readable_count(counts['MySQL'])}')
-
-            self.after(0, update_label)
+            mysql_total = counts.get("MySQL", "błąd")
+            pretty = self._human(mysql_total) if isinstance(mysql_total, int) else mysql_total
+            self.after(0, lambda: self.mysql_label.config(text=f"📊 MySQL: {pretty}"))
 
         threading.Thread(target=task, daemon=True).start()
 
-    def _start_data_generation(self):
-        label = self.size_selector.get()
-        if not label:
-            messagebox.showwarning("Błąd", "Wybierz liczbę rekordów.")
-            return
-
-        total_records = self.size_options[label]
-
-        self.gen_status_label.config(text="⏳ Generowanie danych...")
-        self.progress.start(10)
-        self.generate_button.config(state="disabled")
-
-        def task():
-            try:
-                from scripts.data_generator import generate_data_and_import  # zakładamy taką funkcję
-
-                summary = generate_data_and_import(total_records)
-
-                def on_done():
-                    self.progress.stop()
-                    self.generate_button.config(state="normal")
-                    self.gen_status_label.config(text="✅ Zakończono")
-                    self._load_db_record_counts()
-
-                    self.summary_text.delete("1.0", tk.END)
-                    for k, v in summary.items():
-                        self.summary_text.insert(tk.END, f"{k}: {v:,}\n")
-
-                self.after(0, on_done)
-            except Exception as e:
-                def on_error():
-                    self.progress.stop()
-                    self.generate_button.config(state="normal")
-                    self.gen_status_label.config(text=f"❌ Błąd: {e}")
-                self.after(0, on_error)
-
-        threading.Thread(target=task, daemon=True).start()
-
-
-    def _human_readable_count(self, n):
+    @staticmethod
+    def _human(n: int):
         if n >= 1_000_000:
-            return f"{round(n / 1_000_000, 1)} mln"
-        elif n >= 1_000:
-            return f"{round(n / 1_000, 1)} tys."
+            return f"{round(n/1_000_000,1)} mln"
+        if n >= 1_000:
+            return f"{round(n/1_000,1)} tys."
         return str(n)
+
+    # ---------- ładowanie klas  ------------------------------------------
+
+    def _load_test_classes(self):
+        modules = [
+            test_01_basic_read,
+            test_02_rating_by_cuisine,
+            test_03_top_healthy_popular_recipes,
+            test_04_highly_rated_unliked_recipes,
+        ]
+        by_op = {"CREATE": [], "READ": [], "UPDATE": [], "DELETE": []}
+
+        for module in modules:
+            for _name, obj in inspect.getmembers(module, inspect.isclass):
+                if issubclass(obj, BasePerformanceTest) and obj is not BasePerformanceTest:
+                    op = getattr(obj, "operation", "READ").upper()
+                    if op not in by_op:
+                        op = "READ"
+                    by_op[op].append(obj)
+
+        return by_op
+
+    def _find_test_class_by_name(self, name: str):
+        for lst in self.tests_by_op.values():
+            for cls in lst:
+                if cls.__name__ == name:
+                    return cls
+        return None
 
 
 if __name__ == "__main__":
-    app = App()
-    app.mainloop()
+    App().mainloop()
