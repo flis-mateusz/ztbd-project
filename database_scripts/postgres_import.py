@@ -4,21 +4,21 @@ import io
 def create_postgres_tables(cursor):
     print("🔧 Tworzenie tabel...")
     table_queries = [
-        "CREATE TABLE IF NOT EXISTS cuisine (id INTEGER PRIMARY KEY, name VARCHAR(100));",
-        "CREATE TABLE IF NOT EXISTS meal_type (id INTEGER PRIMARY KEY, name VARCHAR(100));",
-        "CREATE TABLE IF NOT EXISTS diet (id INTEGER PRIMARY KEY, type VARCHAR(100));",
-        "CREATE TABLE IF NOT EXISTS difficulty (id INTEGER PRIMARY KEY, level VARCHAR(100));",
-        "CREATE TABLE IF NOT EXISTS ingredients (id INTEGER PRIMARY KEY, name VARCHAR(100));",
+        "CREATE TABLE IF NOT EXISTS cuisine (id SERIAL PRIMARY KEY, name VARCHAR(100));",
+        "CREATE TABLE IF NOT EXISTS meal_type (id SERIAL PRIMARY KEY, name VARCHAR(100));",
+        "CREATE TABLE IF NOT EXISTS diet (id SERIAL PRIMARY KEY, type VARCHAR(100));",
+        "CREATE TABLE IF NOT EXISTS difficulty (id SERIAL PRIMARY KEY, level VARCHAR(100));",
+        "CREATE TABLE IF NOT EXISTS ingredients (id SERIAL PRIMARY KEY, name VARCHAR(100));",
         """
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY,
+            id SERIAL PRIMARY KEY,
             email VARCHAR(255),
             login VARCHAR(100),
             password VARCHAR(255)
         );""",
         """
         CREATE TABLE IF NOT EXISTS recipes (
-            id INTEGER PRIMARY KEY,
+            id SERIAL PRIMARY KEY,
             title VARCHAR(255),
             description TEXT,
             cook_time INTEGER,
@@ -32,7 +32,7 @@ def create_postgres_tables(cursor):
         );""",
         """
         CREATE TABLE IF NOT EXISTS recipes_ingredients (
-            id INTEGER PRIMARY KEY,
+            id SERIAL PRIMARY KEY,
             id_recipe INTEGER REFERENCES recipes(id),
             id_ingredient INTEGER REFERENCES ingredients(id),
             quantity FLOAT,
@@ -40,14 +40,14 @@ def create_postgres_tables(cursor):
         );""",
         """
         CREATE TABLE IF NOT EXISTS instructions (
-            id INTEGER PRIMARY KEY,
+            id SERIAL PRIMARY KEY,
             id_recipe INTEGER REFERENCES recipes(id),
             step_number INTEGER,
             description TEXT
         );""",
         """
         CREATE TABLE IF NOT EXISTS nutrition (
-            id INTEGER PRIMARY KEY,
+            id SERIAL PRIMARY KEY,
             id_recipe INTEGER REFERENCES recipes(id),
             calories INTEGER,
             carbohydrates FLOAT,
@@ -60,14 +60,14 @@ def create_postgres_tables(cursor):
         );""",
         """
         CREATE TABLE IF NOT EXISTS users_recipes (
-            id INTEGER PRIMARY KEY,
+            id SERIAL PRIMARY KEY,
             id_recipe INTEGER REFERENCES recipes(id),
             id_user INTEGER REFERENCES users(id),
             saved_at TIMESTAMP
         );""",
         """
         CREATE TABLE IF NOT EXISTS rating (
-            id INTEGER PRIMARY KEY,
+            id SERIAL PRIMARY KEY,
             id_recipe INTEGER REFERENCES recipes(id),
             id_user INTEGER REFERENCES users(id),
             value FLOAT
@@ -86,6 +86,8 @@ def truncate_postgres_tables(cursor):
 
 def copy_from_dataframe(cursor, df, table, columns):
     print(f"📥 COPY -> {table} ({len(df):,} rekordów)")
+    if 'id' in df.columns:
+        df = df.drop(columns=['id'])
     buffer = io.StringIO()
     df.to_csv(buffer, index=False, header=False, sep='\t')
     buffer.seek(0)
@@ -116,19 +118,19 @@ def import_postgres_data(data: dict):
 
     total_inserted = 0
 
-    total_inserted += insert("cuisine", ["id", "name"], data["cuisine"])
-    total_inserted += insert("meal_type", ["id", "name"], data["meal_type"])
-    total_inserted += insert("diet", ["id", "type"], data["diet"])
-    total_inserted += insert("difficulty", ["id", "level"], data["difficulty"])
-    total_inserted += insert("ingredients", ["id", "name"], data["ingredients"])
+    total_inserted += insert("cuisine", ["name"], data["cuisine"])
+    total_inserted += insert("meal_type", ["name"], data["meal_type"])
+    total_inserted += insert("diet", ["type"], data["diet"])
+    total_inserted += insert("difficulty", ["level"], data["difficulty"])
+    total_inserted += insert("ingredients", ["name"], data["ingredients"])
 
-    total_inserted += copy_from_dataframe(cursor, data["users"], "users", ["id", "email", "login", "password"])
-    total_inserted += copy_from_dataframe(cursor, data["recipes"], "recipes", ["id", "title", "description", "cook_time", "serving_size", "views", "rating", "id_cuisine", "id_diet", "id_difficulty", "id_meal_type"])
-    total_inserted += copy_from_dataframe(cursor, data["recipes_ingredients"], "recipes_ingredients", ["id", "id_recipe", "id_ingredient", "quantity", "measurement"])
-    total_inserted += copy_from_dataframe(cursor, data["instructions"], "instructions", ["id", "id_recipe", "step_number", "description"])
-    total_inserted += copy_from_dataframe(cursor, data["nutrition"], "nutrition", ["id", "id_recipe", "calories", "carbohydrates", "protein", "fat", "fiber", "salt", "saturated_fat", "sugars"])
-    total_inserted += copy_from_dataframe(cursor, data["users_recipes"], "users_recipes", ["id", "id_recipe", "id_user", "saved_at"])
-    total_inserted += copy_from_dataframe(cursor, data["rating"], "rating", ["id", "id_recipe", "id_user", "value"])
+    total_inserted += copy_from_dataframe(cursor, data["users"], "users", ["email", "login", "password"])
+    total_inserted += copy_from_dataframe(cursor, data["recipes"], "recipes", ["title", "description", "cook_time", "serving_size", "views", "rating", "id_cuisine", "id_diet", "id_difficulty", "id_meal_type"])
+    total_inserted += copy_from_dataframe(cursor, data["recipes_ingredients"], "recipes_ingredients", ["id_recipe", "id_ingredient", "quantity", "measurement"])
+    total_inserted += copy_from_dataframe(cursor, data["instructions"], "instructions", ["id_recipe", "step_number", "description"])
+    total_inserted += copy_from_dataframe(cursor, data["nutrition"], "nutrition", ["id_recipe", "calories", "carbohydrates", "protein", "fat", "fiber", "salt", "saturated_fat", "sugars"])
+    total_inserted += copy_from_dataframe(cursor, data["users_recipes"], "users_recipes", ["id_recipe", "id_user", "saved_at"])
+    total_inserted += copy_from_dataframe(cursor, data["rating"], "rating", ["id_recipe", "id_user", "value"])
 
     conn.commit()
     cursor.close()

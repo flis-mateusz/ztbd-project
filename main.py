@@ -172,6 +172,7 @@ class App(tk.Tk):
 
                 self.after(0, on_done)
             except Exception as e:
+                raise e
                 self.after(0, lambda: self._generation_error(e))
 
         threading.Thread(target=task, daemon=True).start()

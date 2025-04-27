@@ -186,7 +186,7 @@ def generate_and_import(total_records: int) -> dict:
         "ingredients": load_csv("ingredients"),
     }
 
-    import_mysql_data(shared)
+    import_mysql_data(shared, total_records)
     import_postgres_data(shared)
     import_mongo_data(shared, port=27017)
     import_mongo_data(shared, port=27018)
