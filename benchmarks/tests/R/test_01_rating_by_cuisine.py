@@ -2,7 +2,7 @@ from benchmarks.core.base_test import BasePerformanceTest
 
 class AverageRatingByCuisineTest(BasePerformanceTest):
     def __init__(self):
-        super().__init__()
+        super().__init__(description="Obliczenie średniej oceny przepisów pogrupowanej po typie kuchni")
 
     # 📘 Test: obliczenie średniej oceny przepisów pogrupowanej po kuchni (id_cuisine)
     # W relacyjnych bazach wykorzystuje GROUP BY, w Mongo agregację z $group
