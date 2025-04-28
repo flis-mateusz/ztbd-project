@@ -1,4 +1,3 @@
-import inspect
 import threading
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -6,13 +5,7 @@ from tkinter import ttk, messagebox
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
-from benchmarks.core.base_test import BasePerformanceTest
-from benchmarks.tests import (
-    test_01_basic_read,
-    test_02_rating_by_cuisine,
-    test_03_top_healthy_popular_recipes,
-    test_04_highly_rated_unliked_recipes,
-)
+from benchmarks.tests import all_tests
 from database_scripts.record_counter import get_record_counts, human_readable
 from generate_and_import import generate_and_import
 
@@ -212,7 +205,6 @@ class App(tk.Tk):
             return
         cls = self._find_test_class_by_name(class_name)
         description = getattr(cls(), "description") or "Brak opisu"
-        print(description)
         self.test_description.configure(state="normal")
         self.test_description.delete("1.0", tk.END)
         self.test_description.insert(tk.END, description)
@@ -251,10 +243,11 @@ class App(tk.Tk):
                 )
                 self._update_mysql_count()
             except Exception as e:
-                self.after(
-                    0,
-                    lambda: self.test_status_label.config(text=f"❌ Błąd: {e}"),
-                )
+                raise e
+                # self.after(
+                #     0,
+                #     lambda: self.test_status_label.config(text=f"❌ Błąd: {e}"),
+                # )
 
         threading.Thread(target=task, daemon=True).start()
 
@@ -293,21 +286,14 @@ class App(tk.Tk):
     # ---------- ładowanie klas  ------------------------------------------
 
     def _load_test_classes(self):
-        modules = [
-            test_01_basic_read,
-            test_02_rating_by_cuisine,
-            test_03_top_healthy_popular_recipes,
-            test_04_highly_rated_unliked_recipes,
-        ]
+        modules = all_tests
         by_op = {"CREATE": [], "READ": [], "UPDATE": [], "DELETE": []}
 
         for module in modules:
-            for _name, obj in inspect.getmembers(module, inspect.isclass):
-                if issubclass(obj, BasePerformanceTest) and obj is not BasePerformanceTest:
-                    op = getattr(obj(), "operation", "READ").upper()
-                    if op not in by_op:
-                        op = "READ"
-                    by_op[op].append(obj)
+            op = getattr(module(), "operation", "READ").upper()
+            if op not in by_op:
+                op = "READ"
+            by_op[op].append(module)
 
         return by_op
 

@@ -22,18 +22,22 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   mongodb-latest:
+    container_name: mongodb-latest
     image: mongo:latest
     ports:
       - "27017:27017"
     volumes:
       - mongo_latest_data:/data/db
+      - ./generated_data:/generated_data
 
   mongodb-old:
+    container_name: mongodb-old
     image: mongo:6.0  # starsza wersja
     ports:
       - "27018:27017"
     volumes:
       - mongo_old_data:/data/db
+      - ./generated_data:/generated_data
 
 volumes:
   mysql_data:
