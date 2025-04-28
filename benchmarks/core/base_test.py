@@ -40,7 +40,7 @@ class BasePerformanceTest(ABC):
             "mongo_old": MongoClient("localhost", 27018)["testdb"]
         }
 
-        print(f"\n🔬 Running test: {self.__class__.__name__}")
+        print(f"\n🔬 Running test [{self.operation}]: {self.__class__.__name__}")
         self.results, self.outputs = {"test": self.__class__.__name__}, {}
 
         # SQL
@@ -129,7 +129,7 @@ class BasePerformanceTest(ABC):
     def fetch_postgres(self, sql, params=None):
         cur = self._postgres.cursor(cursor_factory=psycopg2.extras.DictCursor)
         cur.execute(sql, params or {})
-        rows = cur.fetchall()
+        rows = cur.fetchall() if cur.description else cur.rowcount
         cur.close()
         return rows
 

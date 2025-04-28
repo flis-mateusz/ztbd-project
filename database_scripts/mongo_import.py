@@ -19,7 +19,6 @@ def import_mongo_data(data: dict, port: int = 27017, db_name: str = "testdb"):
         ("ingredients", ["id", "name"]),
         ("users", ["id", "email", "login", "password"]),
         ("users_favourite", ["id", "id_recipe", "id_user", "saved_at"]),
-        # ("users_recipes", ["id", "id_recipe", "id_user", "saved_at"]),
     ]
 
     total_inserted = 0

@@ -6,7 +6,7 @@ from collections import defaultdict
 from benchmarks.tests import all_tests
 from generate_and_import import generate_and_import
 
-DATA_SIZES = [10_000, 100_000]  # , 1_000_000, 10_000_000
+DATA_SIZES = [10_000, ]  # 100_000, 1_000_000, 10_000_000
 RESULT_DIR = pathlib.Path("benchmarks/results")
 RESULT_DIR.mkdir(parents=True, exist_ok=True)
 
