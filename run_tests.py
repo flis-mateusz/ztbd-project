@@ -6,20 +6,20 @@ from collections import defaultdict
 from benchmarks.tests import all_tests
 from generate_and_import import generate_and_import
 
-DATA_SIZES = [10_000, ]  # 100_000, 1_000_000, 10_000_000
+DATA_SIZES = [10_000, 100_000, 1_000_000, 10_000_000]
 RESULT_DIR = pathlib.Path("benchmarks/results")
 RESULT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def write_csv(path, rows, header):
     with path.open("w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=header)
+        w = csv.DictWriter(f, fieldnames=header, delimiter=';')
         w.writeheader()
         for row in rows:
             fixed = {}
             for k, v in row.items():
                 if isinstance(v, float):
-                    fixed[k] = str(v).replace(".", ",")  # zamień . na ,
+                    fixed[k] = str(v).replace(".", ",")
                 else:
                     fixed[k] = v
             w.writerow(fixed)
