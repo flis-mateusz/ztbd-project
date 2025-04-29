@@ -7,7 +7,7 @@ from .test_06_delete_low_ratings import DeleteLowRatingsTest
 from .test_07_delete_short_instructions import DeleteShortInstructionsTest
 from .test_08_delete_high_calorie_high_fat_nutrition import DeleteHighCalorieHighFatNutritionTest
 from .test_09_delete_tiny_ingredient_quantities import DeleteTinyIngredientQuantitiesTest
-from .test_10_delete_low_ratings_popular_recipes import DeleteLowPopularityRecipesTest
+from .test_10_delete_ratings_unpopular_recipes import DeleteRatingsForUnpopularRecipesTest
 
 all_delete_tests = [
     DeleteAllFavouritesTest,
@@ -19,5 +19,5 @@ all_delete_tests = [
     DeleteShortInstructionsTest,
     DeleteHighCalorieHighFatNutritionTest,
     DeleteTinyIngredientQuantitiesTest,
-    DeleteLowPopularityRecipesTest
+    DeleteRatingsForUnpopularRecipesTest
 ]
